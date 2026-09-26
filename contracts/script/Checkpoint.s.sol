@@ -19,8 +19,6 @@ contract Checkpoint is Script {
         for (uint256 i; i < 3; ++i) keys[i] = uint256(keccak256(bytes(names[i])));
 
         bytes32 terminal = keccak256("table-12");
-        address merchant = msg.sender;
-        uint256 merchantBefore = USDC.balanceOf(merchant);
 
         // Restaurant: fund the friends with gas + test USDC, then open the bill.
         vm.startBroadcast();
@@ -32,6 +30,10 @@ contract Checkpoint is Script {
         uint256 billId = CHECKOUT.createBill(terminal, 30_000, 3, 1 hours); // $0.03, 3 people
         vm.stopBroadcast();
         console.log("bill id", billId);
+
+        // The merchant is whoever signed createBill (your --account), read back from the chain.
+        address merchant = CHECKOUT.getBill(billId).merchant;
+        uint256 merchantBefore = USDC.balanceOf(merchant);
 
         // Friends: approve + pay their share.
         for (uint256 i; i < 3; ++i) {
