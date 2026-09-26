@@ -113,7 +113,7 @@ export default function RestaurantPage() {
 
 /* ---------------- live table status ---------------- */
 
-function useTable(name: string | null, ms = 2000) {
+function useTable(name: string | null, ms = 3000) {
   const [snap, setSnap] = useState<TerminalSnapshot | null>(null);
   useEffect(() => {
     if (!name) return;
@@ -170,7 +170,7 @@ function TableCard({ name, onClick }: { name: string; onClick: () => void }) {
 type Phase = { kind: "form" } | { kind: "signing" } | { kind: "mining" } | { kind: "done"; billId: string | null; hash: string } | { kind: "error"; message: string };
 
 function TableSheet({ name, account, onConnect, onClose }: { name: string | null; account: string | null; onConnect: () => void; onClose: () => void }) {
-  const { snap } = useTable(name, 1000);
+  const { snap } = useTable(name, 1500);
   const [amount, setAmount] = useState("");
   const [people, setPeople] = useState(3);
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
@@ -187,14 +187,23 @@ function TableSheet({ name, account, onConnect, onClose }: { name: string | null
     if (!name) return;
     setPhase({ kind: "signing" });
     try {
-      const pending = createBillOnChain({ terminal: name, amountUsd: amount, people });
-      // After the wallet returns a hash we're waiting for the block.
-      setTimeout(() => setPhase((p) => (p.kind === "signing" ? { kind: "mining" } : p)), 4000);
-      const { billId, hash } = await pending;
+      const { billId, hash } = await createBillOnChain({
+        terminal: name,
+        amountUsd: amount,
+        people,
+        onSubmitted: () => setPhase({ kind: "mining" }),
+      });
       setPhase({ kind: "done", billId, hash });
     } catch (e) {
       const message = e instanceof Error ? e.message.split("\n")[0] : "Something went wrong";
-      setPhase({ kind: "error", message: /reject|denied/i.test(message) ? "Cancelled in wallet" : message });
+      setPhase({
+        kind: "error",
+        message: /reject|denied/i.test(message)
+          ? "Cancelled in wallet"
+          : /insufficient funds|gas/i.test(message)
+            ? "This wallet needs testnet MON to pay the network fee"
+            : message,
+      });
     }
   }
 

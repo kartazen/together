@@ -50,7 +50,14 @@ export async function connectedAccount(): Promise<`0x${string}` | null> {
 }
 
 /** Restaurant: open a bill on a table. Signed by the connected (merchant) wallet. */
-export async function createBillOnChain(opts: { terminal: string; amountUsd: string; people: number; ttlSeconds?: number }) {
+export async function createBillOnChain(opts: {
+  terminal: string;
+  amountUsd: string;
+  people: number;
+  ttlSeconds?: number;
+  /** called once the wallet has signed and the tx is sent */
+  onSubmitted?: (hash: `0x${string}`) => void;
+}) {
   const account = await connectWallet();
   const wallet = createWalletClient({ account, chain, transport: custom(provider()) });
   const hash = await wallet.writeContract({
@@ -59,6 +66,7 @@ export async function createBillOnChain(opts: { terminal: string; amountUsd: str
     functionName: "createBill",
     args: [terminalIdOf(opts.terminal), parseUnits(opts.amountUsd, USDC_DECIMALS), opts.people, BigInt(opts.ttlSeconds ?? 3600)],
   });
+  opts.onSubmitted?.(hash);
   // Wait through the wallet's own RPC so we see the tx on the same node that received it.
   const receipt = await createPublicClient({ chain, transport: custom(provider()) }).waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error("Transaction failed");
