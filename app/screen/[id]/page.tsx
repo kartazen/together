@@ -19,7 +19,7 @@ function subscribeResize(cb: () => void) {
  */
 export default function PhoneTerminal() {
   const { id } = useParams<{ id: string }>();
-  const { online, screen, paid } = useTerminal(id);
+  const { online, screen, paid, dark } = useTerminal(id);
   const [hint, setHint] = useState(true);
 
   const viewport = useSyncExternalStore(subscribeResize, () => `${window.innerWidth}x${window.innerHeight}`, () => `${W}x${H}`);
@@ -52,7 +52,7 @@ export default function PhoneTerminal() {
   return (
     <div
       onClick={goFullscreen}
-      className={cx("fixed inset-0 z-50 grid cursor-none place-items-center overflow-hidden transition-colors", paid ? "bg-positive" : "bg-white")}
+      className={cx("fixed inset-0 z-50 grid cursor-none place-items-center overflow-hidden transition-colors", paid ? "bg-positive" : dark ? "bg-ink" : "bg-white")}
     >
       <div className="relative" style={{ width: W, height: H, transform: `scale(${scale})` }}>
         {screen}

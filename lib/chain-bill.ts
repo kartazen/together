@@ -1,20 +1,23 @@
 import { formatUnits } from "viem";
-import { BillStatus, GROUP_CHECKOUT, USDC_DECIMALS, billCode, groupCheckoutAbi, publicClient } from "@/lib/chain/config";
+import { BillStatus, GROUP_CHECKOUT, USDC_DECIMALS, billCode, groupCheckoutAbi, modeName, publicClient, type ChainMode } from "@/lib/chain/config";
 
-/** An on-chain bill as the guest app sees it (read-only, public data). */
+/** An on-chain bill as the guest app sees it (public data only). */
 export interface ChainBill {
   id: string;
   code: string;
-  status: "open" | "paid" | "expired" | "refunded";
+  status: "joining" | "agreeing" | "paying" | "paid" | "expired" | "refunded";
+  mode: ChainMode | null;
+  /** bumps on every proposal — used to replay the reveal once per round */
+  round: number;
   merchant: string;
   /** base units (6 decimals) as a string, and ready-to-print */
   total: string;
   display: string;
-  participants: number;
   joined: number;
+  accepted: number;
   paid: number;
   deadline: number;
-  members: { address: string; share: string; display: string; paid: boolean }[];
+  members: { address: string; share: string; display: string; accepted: boolean; paid: boolean }[];
 }
 
 const usd = (units: bigint) => `$${Number(formatUnits(units, USDC_DECIMALS)).toFixed(2)}`;
@@ -32,25 +35,38 @@ export async function getChainBill(id: bigint): Promise<ChainBill | null> {
   }
   if (partsRes.status === "failure") throw partsRes.error;
   const b = billRes.result;
-  const [members, shares, paid] = partsRes.result;
+  const [members, shares, accepted, paid] = partsRes.result;
   const now = Math.floor(Date.now() / 1000);
 
-  let status: ChainBill["status"] = "open";
-  if (b.status === BillStatus.Settled) status = "paid";
-  else if (b.status === BillStatus.Refunded) status = "refunded";
-  else if (now >= Number(b.deadline)) status = "expired";
+  const statusByCode: Record<number, ChainBill["status"]> = {
+    [BillStatus.Joining]: "joining",
+    [BillStatus.Agreeing]: "agreeing",
+    [BillStatus.Paying]: "paying",
+    [BillStatus.Settled]: "paid",
+    [BillStatus.Refunded]: "refunded",
+  };
+  let status = statusByCode[b.status] ?? "joining";
+  if ((status === "joining" || status === "agreeing" || status === "paying") && now >= Number(b.deadline)) status = "expired";
 
   return {
     id: id.toString(),
     code: billCode(id),
     status,
+    mode: modeName(b.mode),
+    round: b.round,
     merchant: b.merchant,
     total: b.total.toString(),
     display: usd(b.total),
-    participants: b.participants,
     joined: b.joined,
+    accepted: b.accepted,
     paid: b.paidCount,
     deadline: Number(b.deadline),
-    members: members.map((address, i) => ({ address, share: shares[i].toString(), display: usd(shares[i]), paid: paid[i] })),
+    members: members.map((address, i) => ({
+      address,
+      share: shares[i].toString(),
+      display: usd(shares[i]),
+      accepted: accepted[i],
+      paid: paid[i],
+    })),
   };
 }

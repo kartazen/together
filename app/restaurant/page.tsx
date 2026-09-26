@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Check, Minus, MonitorSmartphone, Plus, Wallet } from "lucide-react";
+import { ArrowUpRight, Check, MonitorSmartphone, Plus, Wallet } from "lucide-react";
 import type { TerminalSnapshot } from "@/lib/terminal";
 import { TERMINAL_NAME } from "@/lib/terminal-id";
 import { connectWallet, connectedAccount, createBillOnChain, hasWallet } from "@/lib/chain/wallet";
@@ -140,8 +140,10 @@ function describe(snap: TerminalSnapshot | null) {
   if (!snap) return { label: "…", tone: "muted" as const, busy: false };
   if (!b || b.status === "refunded" || b.status === "expired") return { label: "Free", tone: "muted" as const, busy: false };
   if (b.status === "paid") return { label: `Paid ${b.display}`, tone: "positive" as const, busy: false };
-  if (b.status === "collecting") return { label: `Paying ${b.paid}/${b.participants}`, tone: "live" as const, busy: true };
-  return { label: `Waiting ${b.joined}/${b.participants}`, tone: "live" as const, busy: true };
+  if (b.status === "collecting") return { label: `Paying ${b.paid}/${b.joined}`, tone: "live" as const, busy: true };
+  if (b.status === "choosing")
+    return { label: `${b.mode === "chaos" ? "Chaos" : "Split"} vote ${b.accepted}/${b.joined}`, tone: "live" as const, busy: true };
+  return { label: b.joined ? `${b.joined} joined` : "Waiting to scan", tone: "live" as const, busy: true };
 }
 
 function TableCard({ name, onClick }: { name: string; onClick: () => void }) {
@@ -173,7 +175,6 @@ type Phase = { kind: "form" } | { kind: "signing" } | { kind: "mining" } | { kin
 function TableSheet({ name, account, onConnect, onClose }: { name: string | null; account: string | null; onConnect: () => void; onClose: () => void }) {
   const { snap } = useTable(name, 1500);
   const [amount, setAmount] = useState("");
-  const [people, setPeople] = useState(3);
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const d = describe(snap);
   const title = name ? `Table ${name.replace(/^table-/, "")}` : "";
@@ -191,7 +192,6 @@ function TableSheet({ name, account, onConnect, onClose }: { name: string | null
       const { billId, hash } = await createBillOnChain({
         terminal: name,
         amountUsd: amount,
-        people,
         onSubmitted: () => setPhase({ kind: "mining" }),
       });
       setPhase({ kind: "done", billId, hash });
@@ -256,19 +256,9 @@ function TableSheet({ name, account, onConnect, onClose }: { name: string | null
             />
           </label>
 
-          <div className="mt-10 flex items-center justify-between rounded-[24px] bg-surface px-5 py-3">
-            <span className="text-[17px] font-semibold">People</span>
-            <div className="flex items-center gap-4">
-              <button aria-label="Fewer people" disabled={busy || people <= 2} onClick={() => setPeople(people - 1)} className="grid size-11 place-items-center rounded-full bg-canvas disabled:opacity-40">
-                <Minus className="size-5" />
-              </button>
-              <span className="w-8 text-center text-[24px] font-semibold tabular">{people}</span>
-              <button aria-label="More people" disabled={busy || people >= 20} onClick={() => setPeople(people + 1)} className="grid size-11 place-items-center rounded-full bg-canvas disabled:opacity-40">
-                <Plus className="size-5" />
-              </button>
-            </div>
-          </div>
-          {value > 0 && <p className="mt-3 text-center text-[15px] text-muted">Everyone pays ${(value / people).toFixed(2)}</p>}
+          <p className="mt-8 text-center text-[15px] text-muted">
+            Guests scan, join, then choose together: <b className="text-ink">Split</b> or <b className="text-chaos">Chaos 🎲</b>
+          </p>
           {phase.kind === "error" && <p className="mt-3 text-center text-[15px] text-chaos">{phase.message}</p>}
 
           <div className="mt-auto pt-6">
@@ -299,20 +289,26 @@ function TableSheet({ name, account, onConnect, onClose }: { name: string | null
 
 function LiveBill({ snap }: { snap: TerminalSnapshot }) {
   const b = snap.bill!;
-  const pct = (b.paid / b.participants) * 100;
+  const step =
+    b.status === "open" ? "Friends are joining" : b.status === "choosing" ? `Voting on ${b.mode === "chaos" ? "Chaos 🎲" : "Split"}` : "Friends are paying";
+  const pct = b.status === "collecting" && b.joined ? (b.paid / b.joined) * 100 : 0;
   return (
     <div className="flex flex-1 flex-col pt-6">
       <p className="text-center text-[56px] font-semibold tracking-[-0.045em] tabular">{b.display}</p>
-      <p className="text-center text-[16px] text-muted">Bill #{b.id}</p>
-      <div className="mt-8 grid grid-cols-2 gap-3">
-        <div className="rounded-[24px] bg-surface p-4">
-          <p className="text-[14px] text-muted">Joined</p>
-          <p className="text-[28px] font-semibold tabular">{b.joined}/{b.participants}</p>
-        </div>
-        <div className="rounded-[24px] bg-surface p-4">
-          <p className="text-[14px] text-muted">Paid</p>
-          <p className="text-[28px] font-semibold tabular">{b.paid}/{b.participants}</p>
-        </div>
+      <p className="text-center text-[16px] text-muted">
+        Bill ID <b className="font-mono text-ink">{b.code}</b> · {step}
+      </p>
+      <div className="mt-8 grid grid-cols-3 gap-3">
+        {[
+          ["Joined", `${b.joined}`],
+          ["Agreed", b.status === "open" ? "—" : `${b.status === "collecting" ? b.joined : b.accepted}/${b.joined}`],
+          ["Paid", b.status === "collecting" ? `${b.paid}/${b.joined}` : "—"],
+        ].map(([k, v]) => (
+          <div key={k} className="rounded-[24px] bg-surface p-4">
+            <p className="text-[14px] text-muted">{k}</p>
+            <p className="text-[24px] font-semibold tabular">{v}</p>
+          </div>
+        ))}
       </div>
       <div className="mt-6 h-3 overflow-hidden rounded-full bg-surface">
         <div className="h-full rounded-full bg-ink transition-[width] duration-700" style={{ width: `${pct}%` }} />

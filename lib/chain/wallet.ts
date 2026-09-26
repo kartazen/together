@@ -1,7 +1,7 @@
 "use client";
 
 import { createPublicClient, createWalletClient, custom, parseEventLogs, parseUnits, toHex, type EIP1193Provider } from "viem";
-import { GROUP_CHECKOUT, USDC, USDC_DECIMALS, chain, groupCheckoutAbi, usdcAbi } from "./config";
+import { BillMode, GROUP_CHECKOUT, USDC, USDC_DECIMALS, chain, groupCheckoutAbi, usdcAbi, type ChainMode } from "./config";
 import { terminalIdOf } from "@/lib/terminal-id";
 
 declare global {
@@ -64,7 +64,6 @@ export async function connectedAccount(): Promise<`0x${string}` | null> {
 export async function createBillOnChain(opts: {
   terminal: string;
   amountUsd: string;
-  people: number;
   ttlSeconds?: number;
   /** called once the wallet has signed and the tx is sent */
   onSubmitted?: (hash: `0x${string}`) => void;
@@ -75,7 +74,7 @@ export async function createBillOnChain(opts: {
     address: GROUP_CHECKOUT,
     abi: groupCheckoutAbi,
     functionName: "createBill",
-    args: [terminalIdOf(opts.terminal), parseUnits(opts.amountUsd, USDC_DECIMALS), opts.people, BigInt(opts.ttlSeconds ?? 3600)],
+    args: [terminalIdOf(opts.terminal), parseUnits(opts.amountUsd, USDC_DECIMALS), BigInt(opts.ttlSeconds ?? 3600)],
   });
   opts.onSubmitted?.(hash);
   // Wait through the wallet's own RPC so we see the tx on the same node that received it.
@@ -134,6 +133,33 @@ export async function getTestUsdc(account: `0x${string}`, amount: bigint) {
   const hash = await write.writeContract({ address: USDC, abi: usdcAbi, functionName: "mint", args: [account, amount] });
   await read.waitForTransactionReceipt({ hash });
   await suggestUsdcToWallet(account); // first time: MetaMask offers to show USDC in the wallet
+}
+
+/** Guest actions on GroupCheckoutV2: join → propose / accept / decline a mode. */
+export async function billAction(
+  billId: bigint,
+  account: `0x${string}`,
+  action: "join" | "accept" | "decline" | { propose: ChainMode },
+  onSubmitted?: () => void,
+) {
+  const { read, write } = clients(account);
+  const hash =
+    typeof action === "object"
+      ? await write.writeContract({
+          address: GROUP_CHECKOUT,
+          abi: groupCheckoutAbi,
+          functionName: "proposeMode",
+          args: [billId, action.propose === "chaos" ? BillMode.Chaos : BillMode.Split],
+        })
+      : await write.writeContract({
+          address: GROUP_CHECKOUT,
+          abi: groupCheckoutAbi,
+          functionName: action === "join" ? "join" : action === "accept" ? "acceptMode" : "declineMode",
+          args: [billId],
+        });
+  onSubmitted?.();
+  const receipt = await read.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("Transaction failed");
 }
 
 /** approve (if needed) → payShare. `onStep` drives the button label. */

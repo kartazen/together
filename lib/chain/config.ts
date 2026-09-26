@@ -2,8 +2,11 @@ import { createPublicClient, http } from "viem";
 import { monadTestnet } from "viem/chains";
 import deployments from "@/docs/deployments.json";
 
-/** Deployed addresses — source of truth is docs/deployments.json (overridable per env). */
-export const GROUP_CHECKOUT = (process.env.NEXT_PUBLIC_GROUP_CHECKOUT ?? deployments.groupCheckout) as `0x${string}`;
+/**
+ * Deployed addresses — source of truth is docs/deployments.json (overridable per env).
+ * The app talks to GroupCheckoutV2 (Split / Chaos voting). V1 stays deployed, frozen.
+ */
+export const GROUP_CHECKOUT = (process.env.NEXT_PUBLIC_GROUP_CHECKOUT ?? deployments.groupCheckoutV2 ?? "") as `0x${string}`;
 export const USDC = (process.env.NEXT_PUBLIC_USDC ?? deployments.usdc) as `0x${string}`;
 export const USDC_DECIMALS = 6;
 
@@ -14,9 +17,14 @@ export const publicClient = createPublicClient({
   transport: http(process.env.MONAD_RPC_URL ?? deployments.rpc),
 });
 
-export const BillStatus = { None: 0, Open: 1, Settled: 2, Refunded: 3 } as const;
+export const BillStatus = { None: 0, Joining: 1, Agreeing: 2, Paying: 3, Settled: 4, Refunded: 5 } as const;
+export const BillMode = { None: 0, Split: 1, Chaos: 2 } as const;
+export type ChainMode = "split" | "chaos";
+export const modeName = (m: number): ChainMode | null => (m === BillMode.Split ? "split" : m === BillMode.Chaos ? "chaos" : null);
 
-/** Subset of GroupCheckout's ABI the app uses (full ABI: docs/GroupCheckout.abi.json). */
+const billIdArg = [{ name: "billId", type: "uint256" }] as const;
+
+/** Subset of GroupCheckoutV2's ABI the app uses (full ABI: docs/GroupCheckoutV2.abi.json). */
 export const groupCheckoutAbi = [
   {
     type: "function",
@@ -25,7 +33,6 @@ export const groupCheckoutAbi = [
     inputs: [
       { name: "terminalId", type: "bytes32" },
       { name: "total", type: "uint256" },
-      { name: "participants", type: "uint8" },
       { name: "ttlSeconds", type: "uint64" },
     ],
     outputs: [{ name: "billId", type: "uint256" }],
@@ -38,7 +45,6 @@ export const groupCheckoutAbi = [
       { name: "merchant", type: "address", indexed: true },
       { name: "terminalId", type: "bytes32", indexed: true },
       { name: "total", type: "uint256", indexed: false },
-      { name: "participants", type: "uint8", indexed: false },
     ],
   },
   {
@@ -52,7 +58,7 @@ export const groupCheckoutAbi = [
     type: "function",
     name: "getBill",
     stateMutability: "view",
-    inputs: [{ name: "billId", type: "uint256" }],
+    inputs: billIdArg,
     outputs: [
       {
         type: "tuple",
@@ -62,9 +68,11 @@ export const groupCheckoutAbi = [
           { name: "total", type: "uint256" },
           { name: "paidAmount", type: "uint256" },
           { name: "deadline", type: "uint64" },
-          { name: "participants", type: "uint8" },
           { name: "joined", type: "uint8" },
+          { name: "accepted", type: "uint8" },
           { name: "paidCount", type: "uint8" },
+          { name: "round", type: "uint32" },
+          { name: "mode", type: "uint8" },
           { name: "status", type: "uint8" },
         ],
       },
@@ -74,10 +82,11 @@ export const groupCheckoutAbi = [
     type: "function",
     name: "getParticipants",
     stateMutability: "view",
-    inputs: [{ name: "billId", type: "uint256" }],
+    inputs: billIdArg,
     outputs: [
       { name: "members", type: "address[]" },
       { name: "shares", type: "uint256[]" },
+      { name: "accepted", type: "bool[]" },
       { name: "paid", type: "bool[]" },
     ],
   },
@@ -101,13 +110,20 @@ export const groupCheckoutAbi = [
     ],
     outputs: [{ name: "", type: "uint256" }],
   },
+  { type: "function", name: "join", stateMutability: "nonpayable", inputs: billIdArg, outputs: [] },
   {
     type: "function",
-    name: "payShare",
+    name: "proposeMode",
     stateMutability: "nonpayable",
-    inputs: [{ name: "billId", type: "uint256" }],
+    inputs: [
+      { name: "billId", type: "uint256" },
+      { name: "mode", type: "uint8" },
+    ],
     outputs: [],
   },
+  { type: "function", name: "acceptMode", stateMutability: "nonpayable", inputs: billIdArg, outputs: [] },
+  { type: "function", name: "declineMode", stateMutability: "nonpayable", inputs: billIdArg, outputs: [] },
+  { type: "function", name: "payShare", stateMutability: "nonpayable", inputs: billIdArg, outputs: [] },
 ] as const;
 
 /** Test USDC (MockUSDC): standard ERC-20 plus a public, capped mint. */

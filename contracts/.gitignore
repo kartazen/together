@@ -5,3 +5,4 @@ broadcast/*/31337/
 .env
 broadcast/**/dry-run/
 broadcast/PayBill.s.sol/
+broadcast/Friends.s.sol/

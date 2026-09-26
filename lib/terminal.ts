@@ -1,12 +1,12 @@
 import { formatUnits } from "viem";
 import { terminalIdOf } from "@/lib/terminal-id";
-import { BillStatus, GROUP_CHECKOUT, billCode, USDC_DECIMALS, groupCheckoutAbi, publicClient } from "@/lib/chain/config";
+import { BillStatus, GROUP_CHECKOUT, USDC_DECIMALS, billCode, groupCheckoutAbi, modeName, publicClient, type ChainMode } from "@/lib/chain/config";
 
 /**
  * What an ESP32 terminal should draw. The device renders this as-is:
  * every string is pre-formatted, so the firmware never does money math.
  */
-export type TerminalStatus = "open" | "collecting" | "paid" | "expired" | "refunded";
+export type TerminalStatus = "open" | "choosing" | "collecting" | "paid" | "expired" | "refunded";
 
 export interface TerminalSnapshot {
   terminal: string;
@@ -15,12 +15,17 @@ export interface TerminalSnapshot {
     /** 4-character Bill ID to type in the app, e.g. "0004" */
     code: string;
     status: TerminalStatus;
+    /** "split" | "chaos" once someone proposed a mode */
+    mode: ChainMode | null;
     /** decimal string, e.g. "0.03" */
     total: string;
     /** ready to print, e.g. "$0.03" */
     display: string;
+    /** people at the table so far */
     participants: number;
     joined: number;
+    /** how many agreed to the proposed mode */
+    accepted: number;
     paid: number;
     /** URL to encode in the QR code */
     qr: string;
@@ -55,7 +60,9 @@ export async function getTerminalSnapshot(name: string, appUrl: string): Promise
   if (b.status === BillStatus.Settled) status = "paid";
   else if (b.status === BillStatus.Refunded) status = "refunded";
   else if (serverTime >= deadline) status = "expired";
-  else status = b.paidCount > 0 ? "collecting" : "open";
+  else if (b.status === BillStatus.Paying) status = "collecting";
+  else if (b.status === BillStatus.Agreeing) status = "choosing";
+  else status = "open";
 
   const total = Number(formatUnits(b.total, USDC_DECIMALS)).toFixed(2);
   return {
@@ -64,10 +71,12 @@ export async function getTerminalSnapshot(name: string, appUrl: string): Promise
       id: billId.toString(),
       code: billCode(billId),
       status,
+      mode: modeName(b.mode),
       total,
       display: `$${total}`,
-      participants: b.participants,
+      participants: b.joined,
       joined: b.joined,
+      accepted: b.accepted,
       paid: b.paidCount,
       qr: `${appUrl}/bill/${billId}?join=1`,
       deadline,

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { TerminalSnapshot } from "@/lib/terminal";
+import { cx } from "./ui";
 
 const POLL_MS = 1000;
 /** How long PAID stays on screen before the terminal goes back to idle. Same rule as the firmware. */
@@ -53,9 +54,11 @@ export function useTerminal(id: string) {
     screen = <Idle terminal={snap.terminal} />;
   else if (bill.status === "paid") screen = <Paid display={bill.display} />;
   else if (bill.status === "collecting") screen = <Collecting terminal={snap.terminal} bill={bill} />;
+  else if (bill.status === "choosing") screen = <Choosing terminal={snap.terminal} bill={bill} />;
   else screen = <Open terminal={snap.terminal} bill={bill} />;
 
-  return { snap, online, screen, paid: !!showPaid };
+  const dark = !showPaid && bill?.status === "choosing" && bill.mode === "chaos";
+  return { snap, online, screen, paid: !!showPaid, dark };
 }
 
 type Bill = NonNullable<TerminalSnapshot["bill"]>;
@@ -86,9 +89,26 @@ function Open({ terminal, bill }: { terminal: string; bill: Bill }) {
       <p className="mt-0.5 text-[13px] text-muted tabular">
         Bill ID <b className="font-mono font-semibold tracking-wider text-ink">{bill.code}</b> ·{" "}
         <span key={bill.joined} className="animate-pop inline-block">
-          {bill.joined}/{bill.participants} joined
+          {bill.joined} joined
         </span>
       </p>
+    </div>
+  );
+}
+
+function Choosing({ terminal, bill }: { terminal: string; bill: Bill }) {
+  const chaos = bill.mode === "chaos";
+  return (
+    <div className={cx("flex h-full flex-col items-center px-4 pt-4 text-center", chaos && "bg-ink text-white")}>
+      <p className={cx("text-[11px] font-semibold tracking-[0.2em]", chaos ? "text-white/50" : "text-muted")}>{terminal.toUpperCase()}</p>
+      <p className="text-[34px] font-semibold leading-tight tracking-[-0.04em] tabular">{bill.display}</p>
+      <span className={cx("mt-8 text-[64px] leading-none", chaos && "animate-wobble")}>{chaos ? "🎲" : `1/${bill.joined}`}</span>
+      <p className={cx("mt-5 text-[15px] font-bold tracking-[0.22em]", chaos ? "text-chaos" : "text-ink")}>{chaos ? "CHAOS" : "SPLIT"}</p>
+      <p className={cx("mt-1 text-[14px]", chaos ? "text-white/70" : "text-muted")}>Everyone must agree</p>
+      <p key={bill.accepted} className="animate-pop mt-6 text-[40px] font-semibold leading-none tabular">
+        {bill.accepted}/{bill.joined}
+      </p>
+      <p className={cx("mt-1 text-[13px]", chaos ? "text-white/60" : "text-muted")}>agreed</p>
     </div>
   );
 }
