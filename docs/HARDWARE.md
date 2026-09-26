@@ -7,6 +7,20 @@ ESP32 ──GET /api/terminal/table-12 every 1s──▶ Vercel (Next.js API rou
       ◀──────────── JSON: what to draw ─────────
 ```
 
+## The rule: the terminal is READ-ONLY
+
+```
+ESP32 does:           GET (pull) one URL, draw the JSON         ✅
+ESP32 never does:     POST / write · talk to the blockchain ·   ❌
+                      hold a wallet or private key · move money ·
+                      compute amounts or shares
+```
+
+- **Pull only.** One request type: `GET /api/terminal/<name>` about every second. No POST, no WebSocket, nothing sent back.
+- **All writes happen on phones.** The restaurant creates the bill and friends pay, each signing with their own wallet in the web app. The terminal just *shows* the result.
+- **The server is read-only too.** `/api/terminal` only reads the contract; there are no keys on Vercel.
+- **Why:** a device on a restaurant table can be stolen, cloned or tampered with. If it holds nothing and can write nothing, the worst case is a wrong picture on a screen, never lost money.
+
 The server side is **already built and live**:
 - `GET /api/terminal/<name>` — `app/api/terminal/[id]/route.ts`
 - **Browser twin of the device:** open `/terminal/<name>` (e.g. `http://localhost:3000/terminal/table-12`). It polls the same endpoint and draws the same 4 screens at 240×320. Use it as your pixel reference, and as a backup on demo day.
