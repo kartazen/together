@@ -6,3 +6,4 @@ broadcast/*/31337/
 broadcast/**/dry-run/
 broadcast/PayBill.s.sol/
 broadcast/Friends.s.sol/
+broadcast/SmokeV2.s.sol/
