@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Solidity project and firmware live in their own toolchains.
+    "contracts/**",
+    "firmware/**",
   ]),
 ]);
 

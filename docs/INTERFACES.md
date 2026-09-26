@@ -4,9 +4,9 @@ Freeze this file first. If you need to change something here, tell the other two
 
 ```
 Restaurant PWA ──createBill()──▶ GroupCheckout.sol (Monad testnet) ◀──join/payShare()── Phones (PWA)
-                                        │ events
-                                        ▼
-                                  Backend (Node) ──WebSocket──▶ ESP32 terminal
+                                        ▲ read
+                                        │
+                          Vercel: /api/terminal/[id] ◀──GET every 1s── ESP32 terminal
 ```
 
 ## 1. Chain
@@ -45,39 +45,45 @@ https://<APP_HOST>/bill/<billId>?join=1
 
 Keep it short (≤ 60 chars) so the QR stays low-density and scannable from a small screen. `billId` is the on-chain uint256 in decimal.
 
-## 4. Backend → ESP32 WebSocket
+## 4. ESP32 ⇄ server (HTTP polling)
 
-Endpoint: `wss://<BACKEND_HOST>/terminal?id=<terminalId-hex>`
+The ESP32 polls **one URL about once a second**. The Next.js app on Vercel reads the contract and answers with a ready-to-draw snapshot. No WebSocket and no separate server: Vercel can't hold sockets open, and a 1 s poll looks instant for a payment screen.
 
-The backend always sends a **full state snapshot**. The device just re-renders — it never has to compute anything or remember history. Animations are triggered by `event`.
+```
+GET https://<APP_HOST>/api/terminal/table-12
+```
 
 ```json
 {
-  "type": "state",
   "terminal": "table-12",
   "bill": {
-    "id": "42",
-    "status": "open",
+    "id": "1",
+    "status": "collecting",
     "total": "0.03",
-    "currency": "USDC",
+    "display": "$0.03",
     "participants": 3,
-    "joined": 2,
-    "paid": 1,
-    "mode": "split",
-    "qr": "https://together.app/bill/42?join=1"
+    "joined": 3,
+    "paid": 2,
+    "qr": "https://<APP_HOST>/bill/1?join=1",
+    "deadline": 1790435916
   },
-  "event": "paid"
+  "serverTime": 1790432774
 }
 ```
 
 | field | values |
 |---|---|
-| `bill` | `null` → device shows idle screen |
-| `status` | `open` (joining) · `collecting` (paying) · `paid` · `refunded` |
-| `event` | `null` · `joined` · `paid` · `settled` · `chaos_reveal` (V2) |
-| amounts | decimal **strings**, already formatted — the device never does money math |
+| `bill` | `null` → idle screen |
+| `status` | `open` (nobody paid yet) · `collecting` (some paid) · `paid` (settled) · `expired` · `refunded` |
+| `display` | already formatted — print as-is, never do money math on the device |
+| errors | `400` bad terminal name · `502` chain unreachable → keep showing the last screen |
 
-Device → backend: `{ "type": "hello", "terminal": "table-12", "fw": "0.1.0" }` on connect. The backend replies with the current snapshot immediately, so a rebooted device recovers on its own.
+Device rules (implemented in `firmware/` and in the browser twin at `/terminal/<name>`):
+- Show **PAID** for 15 s after first seeing `status: "paid"` for a bill id, then go back to idle.
+- Animate when `joined` / `paid` go up compared with the previous poll.
+- Redraw only when something changed (no flicker).
+
+Implementation: `app/api/terminal/[id]/route.ts` → `lib/terminal.ts`.
 
 ## 5. Checkpoint 1 (the frozen demo)
 
