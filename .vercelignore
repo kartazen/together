@@ -1,0 +1,4 @@
+# Not needed by the web app — never upload
+contracts/
+firmware/
+.env*
