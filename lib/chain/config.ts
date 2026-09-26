@@ -70,4 +70,80 @@ export const groupCheckoutAbi = [
       },
     ],
   },
+  {
+    type: "function",
+    name: "getParticipants",
+    stateMutability: "view",
+    inputs: [{ name: "billId", type: "uint256" }],
+    outputs: [
+      { name: "members", type: "address[]" },
+      { name: "shares", type: "uint256[]" },
+      { name: "paid", type: "bool[]" },
+    ],
+  },
+  {
+    type: "function",
+    name: "shareOf",
+    stateMutability: "view",
+    inputs: [
+      { name: "billId", type: "uint256" },
+      { name: "who", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "paidBy",
+    stateMutability: "view",
+    inputs: [
+      { name: "billId", type: "uint256" },
+      { name: "who", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "payShare",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "billId", type: "uint256" }],
+    outputs: [],
+  },
 ] as const;
+
+/** Test USDC (MockUSDC): standard ERC-20 plus a public, capped mint. */
+export const usdcAbi = [
+  { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "a", type: "address" }], outputs: [{ type: "uint256" }] },
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "mint",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+] as const;
+
+/** Human Bill ID for on-chain bills: bill 4 → "0004". Typed on the Join sheet, shown on table screens. */
+export const billCode = (billId: bigint | number | string) => String(billId).padStart(4, "0");

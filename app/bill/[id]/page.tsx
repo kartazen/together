@@ -7,10 +7,14 @@ import { QRCodeSVG } from "qrcode.react";
 import { billService } from "@/lib/services";
 import { useBill, useUser } from "@/lib/hooks";
 import { money } from "@/lib/format";
+import { ChainBillView } from "@/components/chain-bill";
 import { RequireUser } from "@/components/features";
 import { Avatar, BottomBar, Button, Dots, Header, IconButton, Screen, Spinner } from "@/components/ui";
 
 export default function BillPage() {
+  const { id } = useParams<{ id: string }>();
+  // Numeric ids are real bills on Monad; the rest are demo (mock) bills.
+  if (/^\d+$/.test(id)) return <ChainBillView id={id} />;
   return (
     <RequireUser>
       <LiveBill />

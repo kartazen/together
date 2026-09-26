@@ -58,6 +58,7 @@ GET https://<APP_HOST>/api/terminal/table-12
   "terminal": "table-12",
   "bill": {
     "id": "1",
+    "code": "0001",
     "status": "collecting",
     "total": "0.03",
     "display": "$0.03",
@@ -75,6 +76,7 @@ GET https://<APP_HOST>/api/terminal/table-12
 |---|---|
 | `bill` | `null` → idle screen |
 | `status` | `open` (nobody paid yet) · `collecting` (some paid) · `paid` (settled) · `expired` · `refunded` |
+| `code` | 4-character Bill ID to show under the QR (typed in the app's Join sheet) |
 | `display` | already formatted — print as-is, never do money math on the device |
 | errors | `400` bad terminal name · `502` chain unreachable → keep showing the last screen |
 

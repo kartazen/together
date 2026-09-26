@@ -15,6 +15,7 @@ export function parseScan(text: string): { path: string } | { code: string } | n
     if (m) return { path: `/bill/${m[1]}?join=1` };
   } catch {}
   const code = text.trim().toUpperCase();
+  if (/^\d{4}$/.test(code) && Number(code) > 0) return { path: `/bill/${Number(code)}?join=1` };
   return /^[A-Z0-9]{4}$/.test(code) ? { code } : null;
 }
 

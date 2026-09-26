@@ -62,6 +62,11 @@ export function JoinSheet({ open, onClose }: { open: boolean; onClose: () => voi
   async function join() {
     setBusy(true);
     setError("");
+    // On-chain bills have numeric IDs shown as "0004" on the table screen.
+    if (/^\d{4}$/.test(code) && Number(code) > 0) {
+      router.push(`/bill/${Number(code)}?join=1`);
+      return;
+    }
     try {
       const bill = await billService.joinBill(code);
       router.push(`/bill/${bill.id}`);

@@ -83,8 +83,11 @@ function Open({ terminal, bill }: { terminal: string; bill: Bill }) {
         <QRCodeSVG value={bill.qr} size={150} level="M" marginSize={0} fgColor="#000000" bgColor="#ffffff" />
       </div>
       <p className="mt-3 text-[15px] font-semibold">Scan to join</p>
-      <p key={bill.joined} className="animate-pop mt-0.5 text-[13px] text-muted tabular">
-        {bill.joined}/{bill.participants} joined
+      <p className="mt-0.5 text-[13px] text-muted tabular">
+        Bill ID <b className="font-mono font-semibold tracking-wider text-ink">{bill.code}</b> ·{" "}
+        <span key={bill.joined} className="animate-pop inline-block">
+          {bill.joined}/{bill.participants} joined
+        </span>
       </p>
     </div>
   );

@@ -36,7 +36,7 @@ TFT_eSPI tft;
 struct Snapshot {
   bool ok = false;        // last fetch succeeded
   bool hasBill = false;
-  String id, status, display, qr;
+  String id, code, status, display, qr;
   int participants = 0, joined = 0, paid = 0;
 };
 
@@ -88,6 +88,7 @@ bool fetchSnapshot(Snapshot &out) {
   out.hasBill = !bill.isNull();
   if (out.hasBill) {
     out.id = bill["id"].as<String>();
+    out.code = bill["code"].as<String>();
     out.status = bill["status"].as<String>();
     out.display = bill["display"].as<String>();
     out.qr = bill["qr"].as<String>();
@@ -145,7 +146,7 @@ void drawOpen() {
   centerText(snap.display, 34, &FreeSansBold18pt7b, C_INK);
   drawQr(snap.qr, tft.width() / 2, 80, 170);
   centerText("Scan to join", 262, &FreeSansBold12pt7b, C_INK);
-  centerText(String(snap.joined) + "/" + snap.participants + " joined", 290, &FreeSans9pt7b, C_MUTED);
+  centerText("Bill ID " + snap.code + "  -  " + snap.joined + "/" + snap.participants + " joined", 290, &FreeSans9pt7b, C_MUTED);
 }
 
 void drawCollecting() {

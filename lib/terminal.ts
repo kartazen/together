@@ -1,6 +1,6 @@
 import { formatUnits } from "viem";
 import { terminalIdOf } from "@/lib/terminal-id";
-import { BillStatus, GROUP_CHECKOUT, USDC_DECIMALS, groupCheckoutAbi, publicClient } from "@/lib/chain/config";
+import { BillStatus, GROUP_CHECKOUT, billCode, USDC_DECIMALS, groupCheckoutAbi, publicClient } from "@/lib/chain/config";
 
 /**
  * What an ESP32 terminal should draw. The device renders this as-is:
@@ -12,6 +12,8 @@ export interface TerminalSnapshot {
   terminal: string;
   bill: null | {
     id: string;
+    /** 4-character Bill ID to type in the app, e.g. "0004" */
+    code: string;
     status: TerminalStatus;
     /** decimal string, e.g. "0.03" */
     total: string;
@@ -60,6 +62,7 @@ export async function getTerminalSnapshot(name: string, appUrl: string): Promise
     terminal: name,
     bill: {
       id: billId.toString(),
+      code: billCode(billId),
       status,
       total,
       display: `$${total}`,

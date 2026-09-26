@@ -1,7 +1,7 @@
 "use client";
 
 import { createPublicClient, createWalletClient, custom, parseEventLogs, parseUnits, toHex, type EIP1193Provider } from "viem";
-import { GROUP_CHECKOUT, USDC_DECIMALS, chain, groupCheckoutAbi } from "./config";
+import { GROUP_CHECKOUT, USDC, USDC_DECIMALS, chain, groupCheckoutAbi, usdcAbi } from "./config";
 import { terminalIdOf } from "@/lib/terminal-id";
 
 declare global {
@@ -72,4 +72,50 @@ export async function createBillOnChain(opts: {
   if (receipt.status !== "success") throw new Error("Transaction failed");
   const [created] = parseEventLogs({ abi: groupCheckoutAbi, eventName: "BillCreated", logs: receipt.logs });
   return { hash, billId: created?.args.billId.toString() ?? null };
+}
+
+/* ---------------- guests ---------------- */
+
+function clients(account: `0x${string}`) {
+  return {
+    read: createPublicClient({ chain, transport: custom(provider()) }),
+    write: createWalletClient({ account, chain, transport: custom(provider()) }),
+  };
+}
+
+/** What this wallet owes on a bill, and whether it can pay right now. */
+export async function readGuest(billId: bigint, account: `0x${string}`) {
+  const { read } = clients(account);
+  const [share, paid, balance, allowance] = await Promise.all([
+    read.readContract({ address: GROUP_CHECKOUT, abi: groupCheckoutAbi, functionName: "shareOf", args: [billId, account] }),
+    read.readContract({ address: GROUP_CHECKOUT, abi: groupCheckoutAbi, functionName: "paidBy", args: [billId, account] }),
+    read.readContract({ address: USDC, abi: usdcAbi, functionName: "balanceOf", args: [account] }),
+    read.readContract({ address: USDC, abi: usdcAbi, functionName: "allowance", args: [account, GROUP_CHECKOUT] }),
+  ]);
+  return { share, paid, balance, allowance };
+}
+
+/** Testnet only: MockUSDC has a public mint (max 1,000 per call). */
+export async function getTestUsdc(account: `0x${string}`, amount: bigint) {
+  const { read, write } = clients(account);
+  const hash = await write.writeContract({ address: USDC, abi: usdcAbi, functionName: "mint", args: [account, amount] });
+  await read.waitForTransactionReceipt({ hash });
+}
+
+/** approve (if needed) → payShare. `onStep` drives the button label. */
+export async function payBill(billId: bigint, account: `0x${string}`, onStep: (step: "approve" | "approving" | "pay" | "paying") => void) {
+  const { read, write } = clients(account);
+  const { share, allowance } = await readGuest(billId, account);
+  if (allowance < share) {
+    onStep("approve");
+    const hash = await write.writeContract({ address: USDC, abi: usdcAbi, functionName: "approve", args: [GROUP_CHECKOUT, share] });
+    onStep("approving");
+    await read.waitForTransactionReceipt({ hash });
+  }
+  onStep("pay");
+  const hash = await write.writeContract({ address: GROUP_CHECKOUT, abi: groupCheckoutAbi, functionName: "payShare", args: [billId] });
+  onStep("paying");
+  const receipt = await read.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("Payment failed");
+  return hash;
 }
