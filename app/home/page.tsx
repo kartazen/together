@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, ChevronRight, Plus, Search, Settings, WalletCards } from "lucide-react";
+import { ArrowRight, ChevronRight, Plus, ScanLine, Search, Settings, WalletCards } from "lucide-react";
 import { useActivity, useBills, useUser } from "@/lib/hooks";
 import { billEmoji, money } from "@/lib/format";
 import { ActivityRow } from "@/components/activity";
 import { JoinSheet, RequireUser, TopUpSheet } from "@/components/features";
+import { ScanSheet } from "@/components/scanner";
 import { Avatar, IconPill, Screen, Sheet } from "@/components/ui";
 
 export default function HomePage() {
@@ -24,6 +25,7 @@ function Home() {
   const activity = useActivity();
   const live = useBills().filter((b) => b.status !== "paid");
   const [joinOpen, setJoinOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   if (!user) return null;
@@ -64,13 +66,17 @@ function Home() {
         </div>
       </section>
 
-      <Link href="/create" className="mt-8 flex h-20 items-center gap-4 rounded-[28px] bg-ink px-5 text-white transition active:scale-[0.98]">
+      <button
+        type="button"
+        onClick={() => setScanOpen(true)}
+        className="mt-8 flex h-20 w-full items-center gap-4 rounded-[28px] bg-ink px-5 text-left text-white transition active:scale-[0.98]"
+      >
         <span className="grid size-11 place-items-center rounded-full bg-white/15">
-          <Plus className="size-6" strokeWidth={2.5} />
+          <ScanLine className="size-6" strokeWidth={2.25} />
         </span>
-        <span className="flex-1 text-[20px] font-semibold tracking-tight">Create bill</span>
+        <span className="flex-1 text-[20px] font-semibold tracking-tight">Scan to join</span>
         <ArrowRight className="size-5 text-white/60" />
-      </Link>
+      </button>
 
       {live.length > 0 && (
         <section className="mt-8">
@@ -112,6 +118,14 @@ function Home() {
       </button>
 
       <JoinSheet open={joinOpen} onClose={() => setJoinOpen(false)} />
+      <ScanSheet
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onManual={() => {
+          setScanOpen(false);
+          setJoinOpen(true);
+        }}
+      />
       <TopUpSheet open={topUpOpen} onClose={() => setTopUpOpen(false)} />
       <Sheet open={activityOpen} onClose={() => setActivityOpen(false)} title="Activity">
         {activity.length === 0 ? (
