@@ -6,6 +6,7 @@
   "usdc": "0xdF6dA3b58f478deF8bDF0D87E27401026b23528a",
   "deployBlock": 65871602,
   "deployer": "0x87218eb3381cEEB287d7768f4898Eda190421ADA",
-  "groupCheckoutV2": null,
-  "notes": "groupCheckout = V1 (equal split only, frozen). groupCheckoutV2 = Split/Chaos voting \u2014 used by the app."
+  "groupCheckoutV2": "0x88f5a9893083E02fB8D8529aa5E6745F1a1c5c6a",
+  "notes": "groupCheckout = V1 (equal split only, frozen). groupCheckoutV2 = Split/Chaos voting \u2014 used by the app.",
+  "deployBlockV2": 65898077
 }
