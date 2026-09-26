@@ -7,6 +7,7 @@ import { formatUnits, parseUnits } from "viem";
 import type { ChainBill } from "@/lib/chain-bill";
 import { USDC_DECIMALS } from "@/lib/chain/config";
 import { connectWallet, connectedAccount, getTestUsdc, hasWallet, payBill, readGuest } from "@/lib/chain/wallet";
+import { NoWalletButton } from "./wallet-gate";
 import { Avatar, BottomBar, Button, Dots, Header, Screen, Spinner, cx } from "./ui";
 
 const usd = (units: bigint) => `$${Number(formatUnits(units, USDC_DECIMALS)).toFixed(2)}`;
@@ -224,7 +225,7 @@ export function ChainBillView({ id }: { id: string }) {
         ) : full ? (
           <p className="py-4 text-center text-[16px] text-muted">This table is full.</p>
         ) : !hasWallet() ? (
-          <p className="py-4 text-center text-[15px] text-muted">Open this page in a browser with a wallet (MetaMask) to pay.</p>
+          <NoWalletButton action="pay" />
         ) : !account ? (
           <Button loading={busy === "connect"} onClick={connect}>
             Connect wallet to pay

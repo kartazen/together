@@ -12,6 +12,17 @@ declare global {
 
 export const hasWallet = () => typeof window !== "undefined" && !!window.ethereum;
 
+export const isMobile = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+/**
+ * Opens this exact page inside the MetaMask app's browser (or the store if it isn't installed).
+ * Safari / Chrome on phones have no wallet; MetaMask's in-app browser does.
+ */
+export const openInMetaMaskUrl = (href = window.location.href) =>
+  `https://metamask.app.link/dapp/${href.replace(/^https?:\/\//, "")}`;
+
+export const INSTALL_METAMASK_URL = "https://metamask.io/download/";
+
 function provider(): EIP1193Provider {
   if (!window.ethereum) throw new Error("No wallet found on this device. Install MetaMask.");
   return window.ethereum;

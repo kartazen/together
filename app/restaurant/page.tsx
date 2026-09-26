@@ -7,6 +7,7 @@ import type { TerminalSnapshot } from "@/lib/terminal";
 import { TERMINAL_NAME } from "@/lib/terminal-id";
 import { connectWallet, connectedAccount, createBillOnChain, hasWallet } from "@/lib/chain/wallet";
 import { Button, Dots, Screen, Sheet, cx } from "@/components/ui";
+import { NoWalletButton } from "@/components/wallet-gate";
 
 const TABLES_KEY = "together.restaurant.tables";
 const DEFAULT_TABLES = ["table-12", "table-7", "table-3"];
@@ -272,7 +273,7 @@ function TableSheet({ name, account, onConnect, onClose }: { name: string | null
 
           <div className="mt-auto pt-6">
             {!hasWallet() ? (
-              <p className="text-center text-[15px] text-muted">Open this page in a browser with a wallet (MetaMask) to create bills.</p>
+              <NoWalletButton action="create bills" />
             ) : !account ? (
               <Button onClick={onConnect}>
                 <Wallet className="size-5" /> Connect restaurant wallet
