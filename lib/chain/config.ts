@@ -20,6 +20,29 @@ export const BillStatus = { None: 0, Open: 1, Settled: 2, Refunded: 3 } as const
 export const groupCheckoutAbi = [
   {
     type: "function",
+    name: "createBill",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "terminalId", type: "bytes32" },
+      { name: "total", type: "uint256" },
+      { name: "participants", type: "uint8" },
+      { name: "ttlSeconds", type: "uint64" },
+    ],
+    outputs: [{ name: "billId", type: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "BillCreated",
+    inputs: [
+      { name: "billId", type: "uint256", indexed: true },
+      { name: "merchant", type: "address", indexed: true },
+      { name: "terminalId", type: "bytes32", indexed: true },
+      { name: "total", type: "uint256", indexed: false },
+      { name: "participants", type: "uint8", indexed: false },
+    ],
+  },
+  {
+    type: "function",
     name: "activeBillOf",
     stateMutability: "view",
     inputs: [{ name: "terminalId", type: "bytes32" }],

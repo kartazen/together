@@ -27,6 +27,16 @@ The server side is **already built and live**:
 
 Try it now: `curl http://localhost:3000/api/terminal/table-12` → bill #1 from the checkpoint run, `status: "paid"`.
 
+## Plan B: a phone or tablet as the terminal
+
+If the ESP32 isn't ready or breaks on demo day, put any phone/tablet on the table and open:
+
+```
+https://<APP_HOST>/screen/table-12
+```
+
+Same endpoint, same rules, same four screens — just scaled to fill the device. Tap once for full screen; the screen is kept awake. Staff can also open it from the restaurant app (**Show table screen on a phone**). Nothing else in the system changes: the chain, the API and the phones don't know or care which kind of screen is on the table.
+
 ## Hardware
 - **ESP32-S3** dev board
 - 2.8" **ILI9341** SPI TFT, 240×320, portrait (or ST7789 240×320 — just change the driver in `User_Setup.h`)

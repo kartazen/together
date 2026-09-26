@@ -1,4 +1,5 @@
-import { formatUnits, keccak256, toBytes } from "viem";
+import { formatUnits } from "viem";
+import { terminalIdOf } from "@/lib/terminal-id";
 import { BillStatus, GROUP_CHECKOUT, USDC_DECIMALS, groupCheckoutAbi, publicClient } from "@/lib/chain/config";
 
 /**
@@ -28,10 +29,7 @@ export interface TerminalSnapshot {
   serverTime: number;
 }
 
-export const TERMINAL_NAME = /^[a-z0-9-]{1,32}$/;
-
-/** "table-12" → the bytes32 id the restaurant passes to createBill(). */
-export const terminalIdOf = (name: string) => keccak256(toBytes(name));
+export { TERMINAL_NAME, terminalIdOf } from "@/lib/terminal-id";
 
 export async function getTerminalSnapshot(name: string, appUrl: string): Promise<TerminalSnapshot> {
   const serverTime = Math.floor(Date.now() / 1000);
