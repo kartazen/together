@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Check, ChevronRight, Copy, LogOut } from "lucide-react";
 import { userService } from "@/lib/services";
 import { useUser } from "@/lib/hooks";
-import { money } from "@/lib/format";
 import { RequireUser } from "@/components/features";
+import { formatUsd, useWalletUsdc } from "@/components/wallet-balance";
 import { Avatar, Card, Header, Screen } from "@/components/ui";
 
 export default function ProfilePage() {
@@ -21,6 +21,7 @@ function Profile() {
   const router = useRouter();
   const { user } = useUser();
   const [copied, setCopied] = useState(false);
+  const wallet = useWalletUsdc();
   const [name, setName] = useState<string | null>(null);
   if (!user) return null;
 
@@ -66,12 +67,12 @@ function Profile() {
         <button onClick={() => router.push("/wallet")} className="flex h-16 w-full items-center justify-between">
           <span className="text-[16px] text-muted">Balance</span>
           <span className="flex items-center gap-1 text-[17px] font-semibold tabular">
-            {money(user.balance, user.currency, { fixed: true })} <ChevronRight className="size-4 text-faint" />
+            {wallet.balance !== null ? formatUsd(wallet.balance) : "—"} <ChevronRight className="size-4 text-faint" />
           </span>
         </button>
         <div className="flex h-16 items-center justify-between">
           <span className="text-[16px] text-muted">Currency</span>
-          <span className="text-[17px] font-semibold">Euro</span>
+          <span className="text-[17px] font-semibold">USDC</span>
         </div>
       </Card>
 

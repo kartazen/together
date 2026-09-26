@@ -1,4 +1,4 @@
-import type { Activity, Bill, BillMode, Participant, User } from "@/lib/types";
+import type { Activity, Bill, BillMode, NewActivity, Participant, User } from "@/lib/types";
 import type { BillService, UserService } from "@/lib/services/types";
 import { clear, read, write, type RawBill, type RawParticipant } from "./store";
 import { newCode, newId, splitChaos, splitEven, wait } from "./util";
@@ -212,12 +212,10 @@ export class MockUserService implements UserService {
 
   async createUser(): Promise<User> {
     await wait(700);
-    const user: User = { id: newId("usr"), code: newCode(), name: "You", balance: 24.8, currency: "EUR" };
+    const user: User = { id: newId("usr"), code: newCode(), name: "You", balance: 0, currency: "USD" };
     write((db) => {
       db.user = user;
-      db.activity = [
-        { id: newId("act"), kind: "topup", amount: 24.8, currency: "EUR", at: Date.now() - 86_400_000 * 3 },
-      ];
+      db.activity = [];
     });
     return user;
   }
@@ -229,7 +227,7 @@ export class MockUserService implements UserService {
     const current = read().user;
     if (current?.code === normalized) return current;
     // Mock: any well-formed ID signs in to a fresh account with that ID.
-    const user: User = { id: newId("usr"), code: normalized, name: "You", balance: 24.8, currency: "EUR" };
+    const user: User = { id: newId("usr"), code: normalized, name: "You", balance: 0, currency: "USD" };
     write((db) => {
       db.user = user;
       db.bills = {};
@@ -256,5 +254,9 @@ export class MockUserService implements UserService {
 
   async listActivity(): Promise<Activity[]> {
     return read().activity;
+  }
+
+  async recordActivity(entry: NewActivity): Promise<void> {
+    write((db) => void db.activity.unshift({ ...entry, id: newId("act"), at: Date.now() } as Activity));
   }
 }

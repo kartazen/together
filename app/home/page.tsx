@@ -6,7 +6,9 @@ import { ArrowRight, ChevronRight, Plus, ScanLine, Search, Settings, WalletCards
 import { useActivity, useBills, useUser } from "@/lib/hooks";
 import { billEmoji, money } from "@/lib/format";
 import { ActivityRow } from "@/components/activity";
-import { JoinSheet, RequireUser, TopUpSheet } from "@/components/features";
+import { JoinSheet, RequireUser } from "@/components/features";
+import { AddUsdcSheet, formatUsd, useWalletUsdc } from "@/components/wallet-balance";
+import { INSTALL_METAMASK_URL, isMobile, openInMetaMaskUrl } from "@/lib/chain/wallet";
 import { ScanSheet } from "@/components/scanner";
 import { Avatar, IconPill, Screen, Sheet } from "@/components/ui";
 
@@ -27,10 +29,23 @@ function Home() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const wallet = useWalletUsdc();
   const [activityOpen, setActivityOpen] = useState(false);
   if (!user) return null;
 
-  const balance = money(user.balance, user.currency, { fixed: true });
+  const balance = wallet.status === "connected" && wallet.balance !== null ? formatUsd(wallet.balance) : wallet.status === "no-wallet" ? "$0.00" : "$—";
+  const muted = wallet.status !== "connected";
+
+  async function onPlus() {
+    if (wallet.status === "no-wallet") {
+      window.location.href = isMobile() ? openInMetaMaskUrl() : INSTALL_METAMASK_URL;
+      return;
+    }
+    try {
+      if (wallet.status === "disconnected") await wallet.connect();
+      setTopUpOpen(true);
+    } catch {}
+  }
   // Keep big balances on one line next to the + button.
   const balanceSize = balance.length <= 7 ? "text-[64px]" : balance.length <= 9 ? "text-[52px]" : "text-[42px]";
 
@@ -50,20 +65,32 @@ function Home() {
       </header>
 
       <section className="mt-8">
-        <p className="text-[17px] font-medium text-muted">Your balance</p>
+        <p className="flex items-center gap-2 text-[17px] font-medium text-muted">
+          Your balance <span className="rounded-full bg-surface px-2 py-0.5 text-[12px] font-semibold tracking-wide text-ink">USDC</span>
+        </p>
         <div className="mt-1 flex items-center justify-between gap-4">
-          <Link href="/wallet" className={`min-w-0 truncate font-semibold leading-none tracking-[-0.045em] tabular ${balanceSize}`}>
+          <Link href="/wallet" className={`min-w-0 truncate font-semibold leading-none tracking-[-0.045em] tabular ${balanceSize} ${muted ? "text-faint" : ""}`}>
             {balance}
           </Link>
           <button
             type="button"
             aria-label="Add money"
-            onClick={() => setTopUpOpen(true)}
+            onClick={onPlus}
             className="grid size-11 shrink-0 place-items-center rounded-full bg-surface transition hover:bg-surface-2 active:scale-90"
           >
             <Plus className="size-6" strokeWidth={2.25} />
           </button>
         </div>
+        {wallet.status === "disconnected" && (
+          <button onClick={() => wallet.connect().catch(() => {})} className="mt-3 text-[15px] font-semibold underline underline-offset-4">
+            Connect wallet to see your balance
+          </button>
+        )}
+        {wallet.status === "no-wallet" && (
+          <a href={isMobile() ? openInMetaMaskUrl() : INSTALL_METAMASK_URL} className="mt-3 inline-block text-[15px] font-semibold underline underline-offset-4">
+            {isMobile() ? "Open in MetaMask to see your balance" : "Install MetaMask to see your balance"}
+          </a>
+        )}
       </section>
 
       <button
@@ -126,7 +153,7 @@ function Home() {
           setJoinOpen(true);
         }}
       />
-      <TopUpSheet open={topUpOpen} onClose={() => setTopUpOpen(false)} />
+      <AddUsdcSheet open={topUpOpen} onClose={() => setTopUpOpen(false)} account={wallet.account} balance={wallet.balance} onAdded={() => wallet.refresh().catch(() => {})} />
       <Sheet open={activityOpen} onClose={() => setActivityOpen(false)} title="Activity">
         {activity.length === 0 ? (
           <p className="flex flex-1 items-center justify-center text-[16px] text-muted">Your bills will show up here.</p>

@@ -61,3 +61,6 @@ export type Activity =
       currency: Currency;
       at: number;
     };
+
+/** An activity entry before it gets an id and timestamp (keeps the payment/top-up variants distinct). */
+export type NewActivity = Activity extends infer A ? (A extends Activity ? Omit<A, "id" | "at"> : never) : never;

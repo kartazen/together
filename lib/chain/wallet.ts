@@ -106,11 +106,34 @@ export async function readGuest(billId: bigint, account: `0x${string}`) {
   return { share, paid, balance, allowance };
 }
 
+export async function readUsdcBalance(account: `0x${string}`) {
+  return clients(account).read.readContract({ address: USDC, abi: usdcAbi, functionName: "balanceOf", args: [account] });
+}
+
+/**
+ * Ask MetaMask to show test USDC in the wallet (EIP-747 `wallet_watchAsset`), so nobody has to
+ * import the token by hand. Asked once per wallet on this device; declining is fine.
+ */
+export async function suggestUsdcToWallet(account: `0x${string}`) {
+  const key = `together.usdc-suggested.${account.toLowerCase()}`;
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+  } catch {}
+  try {
+    await provider().request({
+      method: "wallet_watchAsset",
+      params: { type: "ERC20", options: { address: USDC, symbol: "USDC", decimals: USDC_DECIMALS } },
+    });
+  } catch {}
+}
+
 /** Testnet only: MockUSDC has a public mint (max 1,000 per call). */
 export async function getTestUsdc(account: `0x${string}`, amount: bigint) {
   const { read, write } = clients(account);
   const hash = await write.writeContract({ address: USDC, abi: usdcAbi, functionName: "mint", args: [account, amount] });
   await read.waitForTransactionReceipt({ hash });
+  await suggestUsdcToWallet(account); // first time: MetaMask offers to show USDC in the wallet
 }
 
 /** approve (if needed) → payShare. `onStep` drives the button label. */

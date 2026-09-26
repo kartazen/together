@@ -6,6 +6,7 @@ import { ArrowUpRight, Check } from "lucide-react";
 import { formatUnits, parseUnits } from "viem";
 import type { ChainBill } from "@/lib/chain-bill";
 import { USDC_DECIMALS } from "@/lib/chain/config";
+import { userService } from "@/lib/services";
 import { connectWallet, connectedAccount, getTestUsdc, hasWallet, payBill, readGuest } from "@/lib/chain/wallet";
 import { NoWalletButton } from "./wallet-gate";
 import { Avatar, BottomBar, Button, Dots, Header, Screen, Spinner, cx } from "./ui";
@@ -126,12 +127,16 @@ export function ChainBillView({ id }: { id: string }) {
       setBusy("usdc");
       const want = share && share > parseUnits("20", USDC_DECIMALS) ? share : parseUnits("20", USDC_DECIMALS);
       await getTestUsdc(account!, want);
+      await userService.recordActivity({ kind: "topup", amount: Number(formatUnits(want, USDC_DECIMALS)), currency: "USD" });
       await refreshGuest(account!);
     });
 
   const pay = () =>
     run(async () => {
+      const paidShare = share;
       setTxHash(await payBill(BigInt(id), account!, (step) => setBusy(step)));
+      if (paidShare !== undefined)
+        await userService.recordActivity({ kind: "bill", billId: id, name: `Bill ${bill!.code}`, amount: -Number(formatUnits(paidShare, USDC_DECIMALS)), currency: "USD" });
       await refreshGuest(account!);
     });
 

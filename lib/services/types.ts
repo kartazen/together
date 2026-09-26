@@ -1,4 +1,4 @@
-import type { Activity, Bill, BillMode, User } from "@/lib/types";
+import type { Activity, Bill, BillMode, NewActivity, User } from "@/lib/types";
 
 export interface BillService {
   createBill(amount: number, name: string): Promise<Bill>;
@@ -19,6 +19,8 @@ export interface UserService {
   updateName(name: string): Promise<User>;
   topUp(amount: number): Promise<User>;
   listActivity(): Promise<Activity[]>;
+  /** Log something that happened on-chain (a payment or a top-up) in this device's activity. */
+  recordActivity(entry: NewActivity): Promise<void>;
 }
 
 /** Fired whenever underlying data may have changed. */

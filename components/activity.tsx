@@ -33,7 +33,7 @@ export function ActivityRow({ item, flat }: { item: Activity; flat?: boolean }) 
   );
   const cls = cx("flex items-center gap-4 transition", flat ? "py-3" : "rounded-[28px] bg-surface px-5 py-4 active:scale-[0.99]");
   return item.kind === "bill" ? (
-    <Link href={`/bill/${item.billId}/success`} className={cls}>
+    <Link href={/^\d+$/.test(item.billId) ? `/bill/${item.billId}` : `/bill/${item.billId}/success`} className={cls}>
       {body}
     </Link>
   ) : (
